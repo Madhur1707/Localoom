@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/services/authService";
 import { getDocumentById } from "@/services/documentService";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
-import { ActiveDocumentTitle } from "@/components/app-shell/ActiveDocumentTitle";
+import { ActiveDocumentTitle } from "@/components/workspace/ActiveDocumentTitle";
 
 export default async function DocumentEditorPage({
   params,
@@ -25,7 +25,7 @@ export default async function DocumentEditorPage({
   }).format(document.updatedAt);
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-8 py-8">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-8 sm:py-8">
       <ActiveDocumentTitle title={document.title} />
       <header className="mb-5">
         <h1 className="text-3xl font-semibold tracking-tight">

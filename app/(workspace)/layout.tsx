@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { requireSession } from "@/services/authService";
 import { getDocumentsForUser } from "@/services/documentService";
-import { WorkspaceShell } from "@/components/app-shell/WorkspaceShell";
+import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
 
 export default async function AppLayout({
   children,

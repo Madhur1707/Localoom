@@ -4,7 +4,7 @@ import { CheckCheck, PenLine, Send, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useWorkspaceUi } from "@/components/app-shell/workspace-ui";
+import { useWorkspaceUi } from "@/components/workspace/workspace-ui";
 
 const QUICK_ACTIONS = [
   { icon: Sparkles, label: "Summarize" },
@@ -20,7 +20,15 @@ export function AiAssistantPanel() {
   if (!isAiPanelOpen) return null;
 
   return (
-    <aside className="flex h-full w-80 shrink-0 flex-col border-l border-border bg-card">
+    <>
+      {/* Mobile-only backdrop so the panel reads as an overlay, not a squeeze. */}
+      <button
+        type="button"
+        aria-label="Close AI assistant"
+        onClick={closeAiPanel}
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+      />
+      <aside className="fixed inset-y-0 right-0 z-50 flex h-full w-80 max-w-[85vw] shrink-0 flex-col border-l border-border bg-card lg:static lg:z-auto lg:max-w-none">
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
         <span className="flex items-center gap-2 font-medium">
           <Sparkles className="size-4 text-primary" />
@@ -69,6 +77,7 @@ export function AiAssistantPanel() {
           Coming in the AI phase
         </p>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Plus } from "lucide-react";
+import { FileText, PanelLeftClose, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useDocuments } from "@/hooks/useDocuments";
 import { Button } from "@/components/ui/button";
 import { WordmarkLogo } from "@/components/shared/WordmarkLogo";
+import { useWorkspaceUi } from "@/components/workspace/workspace-ui";
 import type { DocumentSummary } from "@/types/document";
 
 // Placeholder version-history entries — real per-document history lands in
@@ -20,12 +20,36 @@ const VERSION_HISTORY_PLACEHOLDER = [
 
 export function AppSidebar({ documents }: { documents: DocumentSummary[] }) {
   const pathname = usePathname();
-  const { createDocument, isCreatingDocument } = useDocuments();
+  const {
+    isSidebarOpen,
+    isMobileNavOpen,
+    closeSidebar,
+    closeMobileNav,
+    setCreateDocumentOpen,
+  } = useWorkspaceUi();
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      <div className="flex h-14 items-center border-b border-sidebar-border px-4">
+    <aside
+      className={cn(
+        // Mobile: fixed off-canvas drawer driven by isMobileNavOpen.
+        "fixed inset-y-0 left-0 z-50 flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200",
+        // Desktop: in-flow panel, no transform animation; collapsed via display.
+        "lg:static lg:z-auto lg:transition-none",
+        isMobileNavOpen ? "translate-x-0" : "-translate-x-full",
+        isSidebarOpen ? "lg:flex lg:translate-x-0" : "lg:hidden"
+      )}
+    >
+      <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
         <WordmarkLogo href="/dashboard" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Close sidebar"
+          onClick={closeSidebar}
+        >
+          <PanelLeftClose className="size-4" />
+        </Button>
       </div>
 
       <div className="flex items-center justify-between px-4 pt-5 pb-2">
@@ -37,8 +61,7 @@ export function AppSidebar({ documents }: { documents: DocumentSummary[] }) {
           variant="ghost"
           size="icon-xs"
           aria-label="New document"
-          disabled={isCreatingDocument}
-          onClick={() => createDocument("Untitled document")}
+          onClick={() => setCreateDocumentOpen(true)}
         >
           <Plus className="size-3.5" />
         </Button>
@@ -58,6 +81,7 @@ export function AppSidebar({ documents }: { documents: DocumentSummary[] }) {
                 <li key={document.id}>
                   <Link
                     href={href}
+                    onClick={closeMobileNav}
                     className={cn(
                       "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
                       isActive

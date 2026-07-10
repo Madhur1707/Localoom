@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useWorkspaceUi } from "@/components/app-shell/workspace-ui";
+import { useWorkspaceUi } from "@/components/workspace/workspace-ui";
 
 // Placeholder share dialog. Real membership + role management is phase 4; this
 // shows the intended layout with static members and a copyable link.
