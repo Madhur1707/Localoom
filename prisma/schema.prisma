@@ -1,0 +1,91 @@
+// Prisma schema for the local-first collaborative document editor.
+// Ownership/role membership is normalized into DocumentMember rather than
+// a denormalized ownerId column, so a document can have exactly one OWNER
+// row and any number of EDITOR/VIEWER rows, all queried the same way.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum DocumentRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String?
+  email        String   @unique
+  passwordHash String
+  image        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships DocumentMember[]
+  updates     DocumentUpdate[]
+  versions    DocumentVersion[]
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  DocumentMember[]
+  updates  DocumentUpdate[]
+  versions DocumentVersion[]
+}
+
+// One row per (document, user) pair; the OWNER row is created alongside
+// the document and is never deleted, so a document always has an owner.
+model DocumentMember {
+  id         String       @id @default(cuid())
+  documentId String
+  userId     String
+  role       DocumentRole @default(VIEWER)
+  createdAt  DateTime     @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+  @@index([userId])
+}
+
+// Append-only log of raw Yjs binary updates. Never mutated or truncated —
+// this is what lets restores replay forward instead of destroying history.
+model DocumentUpdate {
+  id          String   @id @default(cuid())
+  documentId  String
+  data        Bytes
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([documentId, createdAt])
+}
+
+// Named snapshots of the full Yjs document state at a point in time.
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  name        String
+  snapshot    Bytes
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([documentId, createdAt])
+}
