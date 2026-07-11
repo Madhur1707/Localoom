@@ -6,7 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validators/authSchema";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-
+  // Trust the deployment host (Vercel terminates TLS at a proxy); required for
+  // Auth.js v5 to build correct callback URLs behind that proxy in production.
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",

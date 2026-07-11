@@ -7,7 +7,9 @@ import { setupCollaborationConnection } from "./connection";
 import { authorizeConnection, type ConnectionAuthorization } from "./auth";
 
 const HOST = process.env.SYNC_HOST ?? "0.0.0.0";
-const PORT = Number(process.env.SYNC_PORT ?? 1234);
+// Railway (and most PaaS) inject the public port via PORT; honor it before the
+// project-specific SYNC_PORT and the local default so the service is reachable.
+const PORT = Number(process.env.SYNC_PORT ?? process.env.PORT ?? 1234);
 
 // Hard cap on a single WebSocket message. A legitimate Yjs update is a few bytes;
 const MAX_PAYLOAD_BYTES = Number(
