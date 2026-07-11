@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validators/authSchema";
+import { redeemDocumentInvitations } from "@/services/documentService";
 
 const SALT_ROUNDS = 12;
 
@@ -32,6 +33,11 @@ export async function POST(request: Request) {
     data: { name, email, passwordHash },
     select: { id: true, name: true, email: true, image: true },
   });
+
+  // Grant access to any documents this email was invited to before it had an
+  // account. Email is already lowercased by the schema, matching how invitations
+  // are stored, so redemption matches case-insensitively.
+  await redeemDocumentInvitations(user.id, email);
 
   return NextResponse.json({ user }, { status: 201 });
 }

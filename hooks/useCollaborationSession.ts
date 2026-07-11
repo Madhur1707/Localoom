@@ -6,15 +6,14 @@ import type { WebsocketProvider } from "y-websocket";
 import type * as Y from "yjs";
 
 import { createDocumentSyncProvider } from "@/lib/yjs/provider";
+import { fetchSyncAccessToken } from "@/services/documentService";
 import type {
   CollaboratorPresence,
   PresenceUser,
   SyncConnectionStatus,
 } from "@/types/collaboration";
 
-// Fold the raw awareness states (one per browser tab) into the participant list
-// the UI wants: one entry per person, self flagged and sorted first, tabs with
-// no published identity yet skipped.
+
 function collectCollaborators(awareness: Awareness): CollaboratorPresence[] {
   const localClientId = awareness.clientID;
   const byUserId = new Map<string, CollaboratorPresence>();
@@ -41,10 +40,7 @@ function collectCollaborators(awareness: Awareness): CollaboratorPresence[] {
   );
 }
 
-// Owns the realtime link for one open document: creates the WebSocket provider,
-// tracks connection status, and derives the live collaborator list from
-// awareness. The awareness `user` field itself is written by CollaborationCaret
-// in the editor — this hook only reads it, so there is a single writer.
+
 export function useCollaborationSession(documentId: string, yDoc: Y.Doc) {
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
   const [connectionStatus, setConnectionStatus] =
@@ -53,40 +49,41 @@ export function useCollaborationSession(documentId: string, yDoc: Y.Doc) {
     []
   );
 
-  // The provider is created *inside* the effect, not in a useMemo/useState
-  // initializer, for two reasons:
-  //   1. React StrictMode (dev) mounts → unmounts → remounts. A memoised
-  //      provider would be destroyed by the first unmount and reused dead on the
-  //      remount, leaving the socket permanently "connecting". Creating it here
-  //      gives each mount a fresh, live provider.
-  //   2. We attach the `status`/`change` listeners in the same synchronous block
-  //      as construction, so a fast (localhost) connection can't fire `connected`
-  //      before we're listening — which previously left navigations stuck on
-  //      "Connecting…" while a slower cold refresh happened to win the race.
+
   useEffect(() => {
-    const wsProvider = createDocumentSyncProvider(documentId, yDoc);
-    const { awareness } = wsProvider;
+    let isCancelled = false;
+    let wsProvider: WebsocketProvider | null = null;
 
-    const handleStatus = (event: { status: SyncConnectionStatus }) =>
-      setConnectionStatus(event.status);
-    const handlePresenceChange = () =>
-      setCollaborators(collectCollaborators(awareness));
+    const connect = async () => {
+      let accessToken: string;
+      try {
+        accessToken = await fetchSyncAccessToken(documentId);
+      } catch {
+        if (!isCancelled) setConnectionStatus("disconnected");
+        return;
+      }
+      if (isCancelled) return;
 
-    wsProvider.on("status", handleStatus);
-    awareness.on("change", handlePresenceChange);
-    // Publish the freshly created provider to render (the editor binds cursors to
-    // it). This is a one-time resource hand-off, not a render loop — a useState
-    // lazy initializer can't be used here because StrictMode would double-invoke
-    // it and leak a second socket.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setProvider(wsProvider);
+      const provider = createDocumentSyncProvider(documentId, yDoc, accessToken);
+      wsProvider = provider;
+      const { awareness } = provider;
+
+      provider.on("status", (event: { status: SyncConnectionStatus }) =>
+        setConnectionStatus(event.status)
+      );
+      awareness.on("change", () =>
+        setCollaborators(collectCollaborators(awareness))
+      );
+      setProvider(provider);
+    };
+
+    void connect();
 
     return () => {
-      wsProvider.off("status", handleStatus);
-      awareness.off("change", handlePresenceChange);
-      // Destroying the provider disconnects the socket and clears our awareness
-      // state, so peers see us leave. IndexedDB persistence is untouched.
-      wsProvider.destroy();
+      isCancelled = true;
+      if (wsProvider) {
+        wsProvider.destroy();
+      }
       setProvider(null);
       setConnectionStatus("connecting");
       setCollaborators([]);

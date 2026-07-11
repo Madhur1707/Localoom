@@ -24,7 +24,7 @@ export function AppTopBar() {
     toggleAiPanel,
     isAiPanelOpen,
     setShareOpen,
-    activeDocumentTitle,
+    activeDocument,
     toggleSidebar,
     openMobileNav,
   } = useWorkspaceUi();
@@ -61,7 +61,7 @@ export function AppTopBar() {
         <span className="hidden text-muted-foreground sm:inline">Workspace</span>
         <ChevronRight className="hidden size-3.5 shrink-0 text-muted-foreground/60 sm:inline" />
         <span className="truncate font-medium">
-          {activeDocumentTitle ?? "Dashboard"}
+          {activeDocument?.title ?? "Dashboard"}
         </span>
       </div>
 
@@ -87,6 +87,7 @@ export function AppTopBar() {
           type="button"
           size="sm"
           aria-label="Share"
+          disabled={!activeDocument}
           onClick={() => setShareOpen(true)}
         >
           <Share2 className="size-4" />

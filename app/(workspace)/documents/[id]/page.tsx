@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/services/authService";
 import { getDocumentById } from "@/services/documentService";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
-import { ActiveDocumentTitle } from "@/components/workspace/ActiveDocumentTitle";
+import { ActiveDocumentBridge } from "@/components/workspace/ActiveDocumentBridge";
 
 export default async function DocumentEditorPage({
   params,
@@ -24,9 +24,17 @@ export default async function DocumentEditorPage({
     year: "numeric",
   }).format(document.updatedAt);
 
+  // Viewers get a read-only editor; owners and editors can write. The sync server
+  // independently enforces the same rule on the wire (see server/sync).
+  const canEdit = document.role !== "VIEWER";
+
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-8 sm:py-8">
-      <ActiveDocumentTitle title={document.title} />
+      <ActiveDocumentBridge
+        id={document.id}
+        title={document.title}
+        role={document.role}
+      />
       <header className="mb-5">
         <h1 className="text-3xl font-semibold tracking-tight">
           {document.title}
@@ -35,7 +43,7 @@ export default async function DocumentEditorPage({
           Last edited {lastEdited}
         </p>
       </header>
-      <EditorCanvas key={document.id} documentId={document.id} />
+      <EditorCanvas key={document.id} documentId={document.id} canEdit={canEdit} />
     </div>
   );
 }

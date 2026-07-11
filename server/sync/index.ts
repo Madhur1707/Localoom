@@ -1,31 +1,53 @@
 import http from "node:http";
+import type { IncomingMessage } from "node:http";
 import { WebSocketServer } from "ws";
 
 import { getOrCreateRoom } from "./collaborationRoom";
 import { setupCollaborationConnection } from "./connection";
+import { authorizeConnection, type ConnectionAuthorization } from "./auth";
 
 const HOST = process.env.SYNC_HOST ?? "0.0.0.0";
 const PORT = Number(process.env.SYNC_PORT ?? 1234);
 
-// The client connects to `ws://host:port/<documentId>`; the path (minus the
-// leading slash) is the room name. Fall back to a shared room if absent.
-function roomNameFromUrl(url: string | undefined): string {
-  const path = (url ?? "/").split("?")[0];
-  return decodeURIComponent(path.slice(1)) || "default";
-}
+
+const authorizationByRequest = new WeakMap<
+  IncomingMessage,
+  ConnectionAuthorization
+>();
 
 const httpServer = http.createServer((_req, res) => {
-  // A tiny health endpoint so a load balancer / `curl` can confirm liveness;
-  // the real traffic is the WebSocket upgrade handled below.
+
   res.writeHead(200, { "content-type": "text/plain" });
   res.end("Scriptum sync server\n");
 });
 
-const wss = new WebSocketServer({ server: httpServer });
+
+const wss = new WebSocketServer({
+  server: httpServer,
+  verifyClient: ({ req }, done) => {
+    authorizeConnection(req.url)
+      .then((authorization) => {
+        if (!authorization) {
+          done(false, 401, "Unauthorized");
+          return;
+        }
+        authorizationByRequest.set(req, authorization);
+        done(true);
+      })
+      .catch(() => done(false, 500, "Sync authorization failed"));
+  },
+});
 
 wss.on("connection", (socket, request) => {
-  const room = getOrCreateRoom(roomNameFromUrl(request.url));
-  setupCollaborationConnection(socket, room);
+  const authorization = authorizationByRequest.get(request);
+  authorizationByRequest.delete(request);
+  if (!authorization) {
+    // verifyClient should have gated this; fail closed if it somehow didn't.
+    socket.close(4401, "unauthorized");
+    return;
+  }
+  const room = getOrCreateRoom(authorization.roomName);
+  setupCollaborationConnection(socket, room, authorization.canWrite);
 });
 
 function handleServerError(error: NodeJS.ErrnoException) {

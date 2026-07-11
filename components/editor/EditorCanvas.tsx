@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo } from "react";
+import { Eye } from "lucide-react";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import Highlight from "@tiptap/extension-highlight";
@@ -17,7 +18,14 @@ import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { useCollaborationSessionContext } from "@/components/workspace/collaboration-session";
 
-export function EditorCanvas({ documentId }: { documentId: string }) {
+
+export function EditorCanvas({
+  documentId,
+  canEdit,
+}: {
+  documentId: string;
+  canEdit: boolean;
+}) {
   const { user } = useAuth();
   const { yDoc, isLocalSnapshotLoaded } = useDocument(documentId);
   const { provider, connectionStatus, collaborators } = useCollaborationSession(
@@ -60,8 +68,8 @@ export function EditorCanvas({ documentId }: { documentId: string }) {
   );
 
   useEffect(() => {
-    editor?.setEditable(isLocalSnapshotLoaded);
-  }, [editor, isLocalSnapshotLoaded]);
+    editor?.setEditable(isLocalSnapshotLoaded && canEdit);
+  }, [editor, isLocalSnapshotLoaded, canEdit]);
 
 
   useEffect(() => {
@@ -75,7 +83,14 @@ export function EditorCanvas({ documentId }: { documentId: string }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <EditorToolbar editor={editor} />
+      {canEdit ? (
+        <EditorToolbar editor={editor} />
+      ) : (
+        <div className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
+          <Eye className="size-4" />
+          View only — you don&apos;t have permission to edit this document.
+        </div>
+      )}
       <div className="rounded-lg border">
         {isLocalSnapshotLoaded ? (
           <EditorContent editor={editor} />

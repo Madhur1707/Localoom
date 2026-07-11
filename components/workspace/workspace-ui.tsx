@@ -8,14 +8,16 @@ import {
   type ReactNode,
 } from "react";
 
-// Cross-component UI state for the workspace shell: the top bar triggers the AI
-// panel, Share dialog, and sidebar (which live elsewhere in the tree), and the
-// editor page publishes the active document title for the breadcrumb.
-//
-// The sidebar uses two independent states so each viewport has a sensible
-// default with no hydration guesswork: `isSidebarOpen` collapses the in-flow
-// desktop sidebar (default open), while `isMobileNavOpen` drives the off-canvas
-// drawer on small screens (default closed).
+import type { DocumentRole } from "@/types/document";
+
+
+export type ActiveDocument = {
+  id: string;
+  title: string;
+  role: DocumentRole;
+};
+
+
 type WorkspaceUiValue = {
   isAiPanelOpen: boolean;
   toggleAiPanel: () => void;
@@ -29,11 +31,9 @@ type WorkspaceUiValue = {
   isMobileNavOpen: boolean;
   openMobileNav: () => void;
   closeMobileNav: () => void;
-  // Closes whichever sidebar is showing: collapses on desktop, shuts the drawer
-  // on mobile. Used by the sidebar's own close button.
   closeSidebar: () => void;
-  activeDocumentTitle: string | null;
-  setActiveDocumentTitle: (title: string | null) => void;
+  activeDocument: ActiveDocument | null;
+  setActiveDocument: (document: ActiveDocument | null) => void;
 };
 
 const WorkspaceUiContext = createContext<WorkspaceUiValue | null>(null);
@@ -44,7 +44,7 @@ export function WorkspaceUiProvider({ children }: { children: ReactNode }) {
   const [isCreateDocumentOpen, setCreateDocumentOpen] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileNavOpen, setMobileNavOpen] = useState(false);
-  const [activeDocumentTitle, setActiveDocumentTitle] = useState<string | null>(
+  const [activeDocument, setActiveDocument] = useState<ActiveDocument | null>(
     null
   );
 
@@ -66,10 +66,10 @@ export function WorkspaceUiProvider({ children }: { children: ReactNode }) {
         setSidebarOpen(false);
         setMobileNavOpen(false);
       },
-      activeDocumentTitle,
-      setActiveDocumentTitle,
+      activeDocument,
+      setActiveDocument,
     }),
-    [isAiPanelOpen, isShareOpen, isCreateDocumentOpen, isSidebarOpen, isMobileNavOpen, activeDocumentTitle]
+    [isAiPanelOpen, isShareOpen, isCreateDocumentOpen, isSidebarOpen, isMobileNavOpen, activeDocument]
   );
 
   return (

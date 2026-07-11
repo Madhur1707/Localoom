@@ -12,24 +12,23 @@ import type { CollaborationRoom } from "./collaborationRoom";
 
 const PING_INTERVAL_MS = 30_000;
 
-// Normalise whatever `ws` hands us (Buffer, ArrayBuffer, or a fragment list)
-// into the single Uint8Array the lib0 decoder expects.
 function toBytes(data: RawData): Uint8Array {
   if (Array.isArray(data)) return new Uint8Array(Buffer.concat(data));
   if (data instanceof ArrayBuffer) return new Uint8Array(data);
   return new Uint8Array(data as Buffer);
 }
 
-// Wire a freshly accepted socket into a room: kick off the sync handshake, relay
-// its messages into the shared doc/awareness, and keep the link alive with pings.
 export function setupCollaborationConnection(
   socket: WebSocket,
-  room: CollaborationRoom
+  room: CollaborationRoom,
+  canWrite: boolean
 ) {
   socket.binaryType = "arraybuffer";
   const connection = room.addConnection(socket);
 
-  socket.on("message", (data) => handleMessage(socket, room, toBytes(data)));
+  socket.on("message", (data) =>
+    handleMessage(socket, room, canWrite, toBytes(data))
+  );
 
   const pingTimer = setInterval(() => {
     if (!connection.isAlive) {
@@ -75,33 +74,61 @@ function sendInitialSync(socket: WebSocket, room: CollaborationRoom) {
 function handleMessage(
   socket: WebSocket,
   room: CollaborationRoom,
+  canWrite: boolean,
   bytes: Uint8Array
 ) {
   const decoder = decoding.createDecoder(bytes);
   const messageType = decoding.readVarUint(decoder);
 
   switch (messageType) {
-    case MESSAGE_SYNC: {
-      const encoder = encoding.createEncoder();
-      encoding.writeVarUint(encoder, MESSAGE_SYNC);
-      // `socket` is the transaction origin, so the doc's update handler knows
-      // not to echo this change straight back to its author.
-      syncProtocol.readSyncMessage(decoder, encoder, room.doc, socket);
-      // Only reply when readSyncMessage actually wrote a response (e.g. the
-      // SyncStep2 answer to a SyncStep1) — length 1 means just the tag.
-      if (encoding.length(encoder) > 1) room.send(socket, toMessage(encoder));
+    case MESSAGE_SYNC:
+      handleSyncMessage(socket, room, canWrite, decoder);
       break;
-    }
-    case MESSAGE_AWARENESS: {
+    case MESSAGE_AWARENESS:
+      // Presence (cursor/name/colour) is allowed from everyone, including
+      // viewers — being read-only doesn't make you invisible to collaborators.
       applyAwarenessUpdate(
         room.awareness,
         decoding.readVarUint8Array(decoder),
         socket
       );
       break;
-    }
     default:
       // Unknown frame types are ignored so a newer client can't crash the relay.
       break;
+  }
+}
+
+// Dispatch a sync frame by its sub-type so we can authorize reads and writes
+// separately. We read the sub-type varUint ourselves (instead of using
+// readSyncMessage) precisely so a viewer's write frames can be dropped before
+// they touch the doc.
+function handleSyncMessage(
+  socket: WebSocket,
+  room: CollaborationRoom,
+  canWrite: boolean,
+  decoder: decoding.Decoder
+) {
+  const syncMessageType = decoding.readVarUint(decoder);
+
+  // SyncStep1 is a read request — the client asking for our state. Everyone,
+  // viewers included, may ask; we answer with SyncStep2 so they receive the doc.
+  if (syncMessageType === syncProtocol.messageYjsSyncStep1) {
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, MESSAGE_SYNC);
+    syncProtocol.readSyncStep1(decoder, encoder, room.doc);
+    if (encoding.length(encoder) > 1) room.send(socket, toMessage(encoder));
+    return;
+  }
+
+  // SyncStep2 and Update carry the client's own edits. Viewers are receive-only,
+  // so their writes are dropped here — read-only is enforced on the wire, not
+  // just by a disabled editor that a crafted client could bypass. `socket` is the
+  // transaction origin so the change isn't echoed straight back to its author.
+  if (!canWrite) return;
+  if (syncMessageType === syncProtocol.messageYjsSyncStep2) {
+    syncProtocol.readSyncStep2(decoder, room.doc, socket);
+  } else if (syncMessageType === syncProtocol.messageYjsUpdate) {
+    syncProtocol.readUpdate(decoder, room.doc, socket);
   }
 }

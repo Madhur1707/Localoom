@@ -19,6 +19,12 @@ enum DocumentRole {
   VIEWER
 }
 
+
+enum DocumentInvitationStatus {
+  PENDING
+  ACCEPTED
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String?
@@ -31,6 +37,7 @@ model User {
   memberships DocumentMember[]
   updates     DocumentUpdate[]
   versions    DocumentVersion[]
+  sentInvitations DocumentInvitation[] @relation("SentInvitations")
 }
 
 model Document {
@@ -39,9 +46,10 @@ model Document {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members  DocumentMember[]
-  updates  DocumentUpdate[]
-  versions DocumentVersion[]
+  members     DocumentMember[]
+  updates     DocumentUpdate[]
+  versions    DocumentVersion[]
+  invitations DocumentInvitation[]
 }
 
 // One row per (document, user) pair; the OWNER row is created alongside
@@ -58,6 +66,24 @@ model DocumentMember {
 
   @@unique([documentId, userId])
   @@index([userId])
+}
+
+model DocumentInvitation {
+  id          String                   @id @default(cuid())
+  documentId  String
+  email       String
+  role        DocumentRole             @default(VIEWER)
+  status      DocumentInvitationStatus @default(PENDING)
+  createdAt   DateTime                 @default(now())
+  acceptedAt  DateTime?
+  invitedById String?
+
+  document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  invitedBy User?    @relation("SentInvitations", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@unique([documentId, email])
+  @@index([email])
+  @@index([documentId, status])
 }
 
 // Append-only log of raw Yjs binary updates. Never mutated or truncated —
