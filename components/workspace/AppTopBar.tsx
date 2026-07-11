@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ChevronRight, Menu, PanelLeft, Share2, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -56,10 +57,22 @@ export function AppTopBar() {
         <PanelLeft className="size-4" />
       </Button>
 
-      {/* Breadcrumb — the "Workspace" crumb is dropped on the smallest screens. */}
       <div className="flex min-w-0 items-center gap-1.5 text-sm">
-        <span className="hidden text-muted-foreground sm:inline">Workspace</span>
-        <ChevronRight className="hidden size-3.5 shrink-0 text-muted-foreground/60 sm:inline" />
+        <Link
+          href="/dashboard"
+          className={cn(
+            "text-muted-foreground transition-colors hover:text-foreground",
+            activeDocument ? "inline" : "hidden sm:inline"
+          )}
+        >
+          Workspace
+        </Link>
+        <ChevronRight
+          className={cn(
+            "size-3.5 shrink-0 text-muted-foreground/60",
+            activeDocument ? "inline" : "hidden sm:inline"
+          )}
+        />
         <span className="truncate font-medium">
           {activeDocument?.title ?? "Dashboard"}
         </span>

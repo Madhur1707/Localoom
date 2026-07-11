@@ -87,6 +87,10 @@ export function RegisterForm() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
+          <p className="text-xs text-muted-foreground">
+            Invited to a document? Use the email address the invitation was
+            sent to — the document will be in your workspace after you sign in.
+          </p>
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="password">Password</Label>

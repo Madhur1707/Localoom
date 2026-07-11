@@ -81,6 +81,17 @@ export function LoginForm() {
           Create one
         </Link>
       </p>
+      <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+        Arrived via a shared document link without an account?{" "}
+        <Link
+          href="/register"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Register
+        </Link>{" "}
+        with the email address the document was shared to — it will appear in
+        your workspace automatically after you sign in.
+      </div>
     </div>
   );
 }

@@ -23,9 +23,8 @@ export function useAuth() {
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Login failed");
-        throw err;
-      } finally {
         setIsSubmitting(false);
+        throw err;
       }
     },
     [router]
@@ -42,9 +41,8 @@ export function useAuth() {
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Registration failed");
-        throw err;
-      } finally {
         setIsSubmitting(false);
+        throw err;
       }
     },
     [router]

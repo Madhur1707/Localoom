@@ -1,94 +1,159 @@
-# Scriptum
+# Localoom
 
-A local-first, real-time collaborative document editor. Built with Next.js 16
-(App Router), Tiptap + Yjs (CRDT), Prisma/PostgreSQL, Auth.js v5, and a Groq-powered
-AI assistant.
+A local-first, real-time collaborative document editor with offline sync,
+CRDT-based conflict resolution, and granular version history.
+
+**Live app:** https://localoom-rho.vercel.app/
+**Repository:** https://github.com/Madhur1707/Localoom
+
+Built for the House of Edtech Fullstack Developer Assignment (v2.1).
+
+---
+
+## How it maps to the assignment
+
+### Local-first architecture
+The browser is the primary source of truth. Every document is a **Yjs CRDT**
+persisted to **IndexedDB** (`y-indexeddb`), so opening, editing, and closing a
+document involves zero blocking network requests. The editor loads from the
+local snapshot first; the network is an enhancement, not a dependency. Kill the
+connection and everything keeps working.
+
+### Background sync engine
+A standalone Node WebSocket server (`server/sync/`) relays Yjs updates between
+clients and persists them to PostgreSQL. When a client reconnects after being
+offline, the Yjs sync protocol exchanges state vectors — the client pushes only
+what the server is missing and pulls only what it is missing. Offline work is
+never overwritten; it merges.
+
+### Deterministic conflict resolution
+Conflicts are resolved by the **CRDT itself**: Yjs guarantees that all peers
+applying the same set of updates converge to the same state, regardless of
+order or how long a peer was offline. There is no "last write wins" and no data
+loss on concurrent edits — two users typing in the same paragraph merge
+character-by-character.
+
+### Version history & time travel
+Users capture named snapshots of a document and browse a timeline
+(`DocumentVersion` table). Restoring a version is **non-destructive for
+collaborators**: the restore is applied as a regular CRDT update on top of the
+live document (not a state reset), so active editors converge to the restored
+content without corruption.
+
+### Robust data validation
+- Every API route validates input with **Zod** before touching the database.
+- The sync server caps WebSocket payloads (`SYNC_MAX_PAYLOAD_BYTES`, default
+  1 MiB) — a malicious multi-gigabyte payload is rejected during the protocol
+  handshake instead of buffering into an OOM.
+- Malformed sync messages are caught per-connection; one bad client cannot
+  crash the room or the server.
+
+### Authentication & authorization
+- **Auth.js v5** (credentials provider, bcrypt-hashed passwords, JWT sessions).
+- Documents support **Owner / Editor / Viewer** roles (`DocumentMember`).
+- Authorization is enforced in three layers:
+  1. API routes — a capability matrix (`view`/`edit`/`manage`) gates every
+     endpoint; non-members get 404 so document existence isn't leaked.
+  2. Sync server — clients connect with a short-lived signed JWT
+     (`SYNC_TOKEN_SECRET`, HS256) minted only after a membership check. Wrong
+     document or missing token → the WebSocket upgrade is rejected.
+  3. **Viewers are read-only at the wire, not just the UI**: the server answers
+     their sync requests (so they receive updates) but drops any update they
+     try to push. A tampered client cannot bypass it.
+
+### Tenant isolation
+Strict ORM scoping: every Prisma query for document data goes through the
+membership check first — there is no query path that returns another tenant's
+rows. Invitations, versions, and updates all cascade from the document and are
+reachable only via its access check.
+
+### AI add-on (Groq via AI-SDK)
+A document-scoped assistant panel with quick actions — **Summarize, Fix
+grammar, Improve writing** — plus free-form chat about the document. Responses
+stream token-by-token (`streamText`). The Groq key stays server-side; the AI
+endpoint runs the same document-access check as every other route.
+
+### Real-world considerations
+- **Document state size over time:** the sync server compacts a document's
+  append-only update log into a single merged snapshot once it passes a
+  threshold (`SYNC_COMPACTION_THRESHOLD`), bounding storage and keeping
+  cold-load hydration fast.
+- **Rapid typing:** edits are debounced and merged per author before
+  persistence; the editor binds directly to the CRDT so keystrokes never wait
+  on the network.
+- **Presence:** live cursors, names, and an avatar stack via the Yjs awareness
+  protocol; a status pill shows the real connection state at all times.
+- **Graceful shutdown:** the sync server flushes buffered edits to the database
+  before exiting, so a deploy never drops the last few seconds of writing.
+
+---
 
 ## Architecture
 
-Scriptum runs as **three** cooperating pieces:
+```
+                    ┌─────────────────────┐
+                    │   Neon (PostgreSQL)  │
+                    │ users · docs · roles │
+                    │ versions · updates   │
+                    └──────▲───────▲───────┘
+              Prisma       │       │       Prisma
+        ┌──────────────────┘       └──────────────────┐
+┌───────┴────────┐   signed JWT (HS256)   ┌────────────┴───────────┐
+│ Next.js 16 app │ ──────────────────────▶│  Sync server (Node ws) │
+│    (Vercel)    │   /api/…/sync-token    │       (Railway)        │
+└───────▲────────┘                        └────────────▲───────────┘
+        │ HTTPS                                        │ wss:// (Yjs sync
+        │                                              │ + awareness)
+     ┌──┴──────────────────────────────────────────────┴──┐
+     │                       Browser                      │
+     │   Tiptap editor ⇄ Y.Doc ⇄ IndexedDB (local-first)  │
+     └────────────────────────────────────────────────────┘
+```
 
-| Piece | What it is | Where it deploys |
-| --- | --- | --- |
-| **Web app** | Next.js (auth, documents, sharing, version history, AI) | **Vercel** |
-| **Sync server** | Standalone Node `ws` server relaying Yjs updates + persisting CRDT snapshots | **Railway** (always-on) |
-| **Database** | PostgreSQL | **Neon** |
+## Tech stack
 
-The sync server cannot run on Vercel — serverless functions can't hold the
-long-lived WebSocket connections collaboration needs, so it lives on its own
-always-on host.
+Next.js 16 (App Router, TypeScript) · React 19 · Tailwind CSS 4 + shadcn/ui ·
+Tiptap 3 · Yjs + y-indexeddb + y-websocket · Node `ws` sync server ·
+PostgreSQL (Neon) + Prisma · Auth.js v5 · Zod · Groq via AI-SDK
 
-## Local development
+## Running locally
 
 ```bash
 npm install
-cp .env.example .env      # then fill in the values
-npx prisma migrate dev    # apply schema to your database
-npm run dev               # Next.js app on http://localhost:3000
-npm run sync:dev          # sync server on ws://localhost:1234 (second terminal)
+npx prisma migrate dev      # apply schema
+npm run dev                 # app → http://localhost:3000
+npm run sync:dev            # sync server → ws://localhost:1234 (second terminal)
 ```
 
-`sync:dev` reads `.env` via `--env-file`; the plain `sync` script expects the
-host to inject env vars (that's what Railway uses in production). Without the
-sync server the editor still works fully offline — edits persist to IndexedDB
-and re-sync when the server is reachable again.
+Without the sync server the editor still works fully offline; edits persist to
+IndexedDB and re-sync when it's reachable.
 
-## Deployment
+## Environment variables
 
-Deploy in this order: **Database → Sync server → Web app**, because the app needs
-the sync server's public URL, and both need the database.
+| Variable | Used by | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | app + sync server | Postgres (pooled) |
+| `DIRECT_URL` | migrations | Postgres (direct, non-pooled) |
+| `AUTH_SECRET` | app | Auth.js session signing |
+| `AUTH_URL` | app | Deployed origin for auth callbacks |
+| `SYNC_TOKEN_SECRET` | app + sync server | Signs/verifies sync access JWTs — **must be identical on both** |
+| `NEXT_PUBLIC_SYNC_SERVER_URL` | browser | Sync server URL (`wss://` in production) |
+| `SYNC_MAX_PAYLOAD_BYTES` | sync server | OOM guard, default 1 MiB |
+| `SYNC_COMPACTION_THRESHOLD` | sync server | Update-log compaction trigger, default 500 |
+| `GROQ_API_KEY`, `GROQ_MODEL` | app | AI assistant |
 
-### 1. Database (Neon)
+## Deployment & CI/CD
 
-1. Create a project at [neon.tech](https://neon.tech) and copy two connection strings:
-   - **Pooled** (host contains `-pooler`) → `DATABASE_URL`
-   - **Direct** (same host without `-pooler`) → `DIRECT_URL`
-2. Apply the schema once from your machine (or a CI step):
-   ```bash
-   DATABASE_URL="<pooled>" DIRECT_URL="<direct>" npm run migrate:deploy
-   ```
+Three pieces, deployed independently; both platforms **auto-deploy from `main`**
+(continuous delivery — every push builds and ships):
 
-### 2. Sync server (Railway)
+| Piece | Platform | Notes |
+| --- | --- | --- |
+| Next.js app | **Vercel** | `build` runs `prisma generate && next build` |
+| Sync server | **Railway** | `railway.json` pins start (`npm run sync`); needs Node ≥ 20 (`engines` field) — the WebSocket server can't run on serverless |
+| Database | **Neon** | migrations applied via `npm run migrate:deploy` |
 
-1. New project → **Deploy from GitHub repo** → select this repo. `railway.json`
-   already sets the start command to `npm run sync`.
-2. **Variables** (Railway auto-injects `PORT`; the server honors it):
-   | Key | Value |
-   | --- | --- |
-   | `DATABASE_URL` | Neon **pooled** URL (the server persists snapshots) |
-   | `SYNC_TOKEN_SECRET` | a generated secret — **must match the web app exactly** |
-3. **Settings → Networking → Generate Domain** to get a public HTTPS domain, e.g.
-   `scriptum-sync.up.railway.app`. The browser reaches it over `wss://`.
+---
 
-### 3. Web app (Vercel)
-
-1. **Import** this repo. Framework preset: Next.js (build command auto-detected —
-   `package.json` runs `prisma generate && next build`).
-2. **Environment Variables:**
-   | Key | Value |
-   | --- | --- |
-   | `DATABASE_URL` | Neon **pooled** URL |
-   | `DIRECT_URL` | Neon **direct** URL |
-   | `AUTH_SECRET` | generate with `npx auth secret` |
-   | `AUTH_URL` | your Vercel HTTPS origin, e.g. `https://scriptum.vercel.app` |
-   | `SYNC_TOKEN_SECRET` | **the exact same secret set on Railway** |
-   | `NEXT_PUBLIC_SYNC_SERVER_URL` | `wss://<your-railway-domain>` |
-   | `GROQ_API_KEY` | from [console.groq.com](https://console.groq.com) |
-   | `GROQ_MODEL` | e.g. `llama-3.3-70b-versatile` |
-3. Deploy. If you set `AUTH_URL` after the first build (once you know the domain),
-   redeploy so Auth.js picks it up.
-
-### Deploy checklist
-
-- [ ] `SYNC_TOKEN_SECRET` is **identical** on Vercel and Railway
-- [ ] `NEXT_PUBLIC_SYNC_SERVER_URL` uses `wss://` (not `ws://`)
-- [ ] `DATABASE_URL` set on **both** Vercel and Railway
-- [ ] `AUTH_URL` matches the real Vercel origin
-- [ ] Migrations applied to Neon (`npm run migrate:deploy`)
-
-### Smoke test
-
-Open the deployed app in two different browsers (two accounts), share a document,
-and type in both — text and cursors should sync live, and the status pill should
-read **Synced**. If it's stuck on "Connecting…", check the browser console for a
-blocked `ws://` (mixed content) or a 401 (mismatched `SYNC_TOKEN_SECRET`).
+Made by **Madhur Pathak** — [GitHub](https://github.com/Madhur1707) ·
+[LinkedIn](https://www.linkedin.com/in/madhurpathak/)

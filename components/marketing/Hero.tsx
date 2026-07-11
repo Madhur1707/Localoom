@@ -49,7 +49,7 @@ export function Hero() {
       {/* Right: product shot. */}
       <div className="relative">
         <Image
-          src="/heroimage.png"
+          src="/hero2.png"
           alt="The Localoom collaborative editor"
           width={1919}
           height={1077}
