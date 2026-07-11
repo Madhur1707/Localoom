@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { jwtVerify } from "jose";
 import type { DocumentRole } from "@prisma/client";
 
 import { verifySyncToken } from "../../lib/collaboration/syncToken";
@@ -25,8 +26,20 @@ export async function authorizeConnection(
   console.log(
     `[sync-auth] room=${roomName} tokenLen=${rawToken?.length ?? 0} ` +
       `secretLen=${secret.length} secretFp=${secretFp} ` +
-      `NODE_ENV=${process.env.NODE_ENV}`
+      `serverTime=${new Date().toISOString()}`
   );
+
+  if (rawToken) {
+    try {
+      await jwtVerify(rawToken, new TextEncoder().encode(secret));
+      console.log("[sync-auth] direct jwtVerify: PASSED");
+    } catch (e) {
+      const err = e as { code?: string; message?: string };
+      console.warn(
+        `[sync-auth] direct jwtVerify FAILED code=${err.code} msg=${err.message}`
+      );
+    }
+  }
 
   if (!roomName) {
     console.warn("[sync-auth] reject: empty room");
@@ -35,7 +48,7 @@ export async function authorizeConnection(
 
   const claims = await verifySyncToken(rawToken);
   if (!claims) {
-    console.warn("[sync-auth] reject: verify failed (secret mismatch or expired)");
+    console.warn("[sync-auth] reject: verifySyncToken returned null");
     return null;
   }
   if (claims.documentId !== roomName) {
