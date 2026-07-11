@@ -18,14 +18,18 @@ function toBytes(data: RawData): Uint8Array {
   return new Uint8Array(data as Buffer);
 }
 
-export function setupCollaborationConnection(
+export async function setupCollaborationConnection(
   socket: WebSocket,
   room: CollaborationRoom,
-  canWrite: boolean
+  canWrite: boolean,
+  userId: string
 ) {
   socket.binaryType = "arraybuffer";
-  const connection = room.addConnection(socket);
+  const connection = room.addConnection(socket, userId);
 
+  // Attach the message handler synchronously so no client frame sent during the
+  // hydration await is dropped. Any edit that lands before the replay finishes is
+  // simply merged — Yjs updates are commutative, so ordering doesn't matter.
   socket.on("message", (data) =>
     handleMessage(socket, room, canWrite, toBytes(data))
   );
@@ -48,6 +52,10 @@ export function setupCollaborationConnection(
     room.removeConnection(socket);
   });
 
+  // Wait for the DB replay so our SyncStep1 reflects durable server content, not
+  // an empty doc. The socket may close during the await; bail if so.
+  await room.whenReady;
+  if (socket.readyState !== socket.OPEN) return;
   sendInitialSync(socket, room);
 }
 

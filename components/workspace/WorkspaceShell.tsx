@@ -13,6 +13,7 @@ import {
   useWorkspaceUi,
 } from "@/components/workspace/workspace-ui";
 import { CollaborationSessionProvider } from "@/components/workspace/collaboration-session";
+import { DocumentActionsProvider } from "@/components/workspace/document-actions";
 
 // Dims the content and closes the drawer on tap. Only meaningful on mobile, so
 // it is hidden at the lg breakpoint where the sidebar is always in-flow.
@@ -41,19 +42,23 @@ export function WorkspaceShell({
   return (
     <WorkspaceUiProvider>
       <CollaborationSessionProvider>
-        <div className="flex h-screen overflow-hidden">
-          <MobileNavBackdrop />
-          <AppSidebar documents={documents} />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <AppTopBar />
-            <div className="flex min-h-0 flex-1">
-              <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
-              <AiAssistantPanel />
+        <DocumentActionsProvider>
+          <div className="flex h-screen overflow-hidden">
+            <MobileNavBackdrop />
+            <AppSidebar documents={documents} />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <AppTopBar />
+              <div className="flex min-h-0 flex-1">
+                <main className="min-w-0 flex-1 overflow-y-auto">
+                  {children}
+                </main>
+                <AiAssistantPanel />
+              </div>
             </div>
           </div>
-        </div>
-        <ShareDialog />
-        <CreateDocumentDialog />
+          <ShareDialog />
+          <CreateDocumentDialog />
+        </DocumentActionsProvider>
       </CollaborationSessionProvider>
     </WorkspaceUiProvider>
   );

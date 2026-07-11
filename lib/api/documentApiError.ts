@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { DocumentAuthorizationError } from "@/lib/authorization/documentAccess";
 import { DocumentMembershipError } from "@/services/documentService";
+import { DocumentVersionError } from "@/services/versionService";
 
 
 export function documentErrorResponse(error: unknown): NextResponse {
@@ -10,7 +11,10 @@ export function documentErrorResponse(error: unknown): NextResponse {
     return NextResponse.json({ error: error.message }, { status });
   }
 
-  if (error instanceof DocumentMembershipError) {
+  if (
+    error instanceof DocumentMembershipError ||
+    error instanceof DocumentVersionError
+  ) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
 

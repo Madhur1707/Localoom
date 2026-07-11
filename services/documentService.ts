@@ -13,6 +13,8 @@ import type {
   DocumentMemberSummary,
   DocumentSharingState,
   DocumentSummary,
+  DocumentVersionSnapshot,
+  DocumentVersionSummary,
   InviteOutcome,
 } from "@/types/document";
 
@@ -408,6 +410,60 @@ export async function deleteDocumentMember(documentId: string, userId: string) {
   );
   if (!response.ok) {
     await parseJsonOrThrow(response, "Failed to remove member");
+  }
+}
+
+export async function fetchDocumentVersions(
+  documentId: string
+): Promise<DocumentVersionSummary[]> {
+  const response = await fetch(`/api/documents/${documentId}/versions`);
+  const body = await parseJsonOrThrow<{ versions: DocumentVersionSummary[] }>(
+    response,
+    "Failed to load version history"
+  );
+  return body.versions;
+}
+
+export async function createDocumentVersionSnapshot(
+  documentId: string,
+  name: string,
+  snapshot: string
+): Promise<DocumentVersionSummary> {
+  const response = await fetch(`/api/documents/${documentId}/versions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, snapshot }),
+  });
+  const body = await parseJsonOrThrow<{ version: DocumentVersionSummary }>(
+    response,
+    "Failed to save version"
+  );
+  return body.version;
+}
+
+export async function fetchDocumentVersionSnapshot(
+  documentId: string,
+  versionId: string
+): Promise<DocumentVersionSnapshot> {
+  const response = await fetch(
+    `/api/documents/${documentId}/versions/${versionId}`
+  );
+  return parseJsonOrThrow<DocumentVersionSnapshot>(
+    response,
+    "Failed to load version"
+  );
+}
+
+export async function deleteDocumentVersion(
+  documentId: string,
+  versionId: string
+): Promise<void> {
+  const response = await fetch(
+    `/api/documents/${documentId}/versions/${versionId}`,
+    { method: "DELETE" }
+  );
+  if (!response.ok) {
+    await parseJsonOrThrow(response, "Failed to delete version");
   }
 }
 

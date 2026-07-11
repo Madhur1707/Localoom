@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "sync": "tsx server/sync/index.ts",
+    "sync": "tsx --env-file=.env server/sync/index.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

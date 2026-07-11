@@ -2,7 +2,7 @@ import http from "node:http";
 import type { IncomingMessage } from "node:http";
 import { WebSocketServer } from "ws";
 
-import { getOrCreateRoom } from "./collaborationRoom";
+import { flushAllRooms, getOrCreateRoom } from "./collaborationRoom";
 import { setupCollaborationConnection } from "./connection";
 import { authorizeConnection, type ConnectionAuthorization } from "./auth";
 
@@ -47,7 +47,12 @@ wss.on("connection", (socket, request) => {
     return;
   }
   const room = getOrCreateRoom(authorization.roomName);
-  setupCollaborationConnection(socket, room, authorization.canWrite);
+  void setupCollaborationConnection(
+    socket,
+    room,
+    authorization.canWrite,
+    authorization.userId
+  );
 });
 
 function handleServerError(error: NodeJS.ErrnoException) {
@@ -74,7 +79,10 @@ httpServer.listen(PORT, HOST, () => {
 function shutdown() {
   console.log("Scriptum sync server shutting down");
   wss.clients.forEach((socket) => socket.close(1001, "server shutting down"));
-  wss.close(() => httpServer.close(() => process.exit(0)));
+  // Persist any buffered edits before the process exits, then close listeners.
+  void flushAllRooms().finally(() => {
+    wss.close(() => httpServer.close(() => process.exit(0)));
+  });
 }
 
 process.on("SIGINT", shutdown);

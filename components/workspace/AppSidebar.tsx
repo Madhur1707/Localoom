@@ -8,15 +8,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { WordmarkLogo } from "@/components/shared/WordmarkLogo";
 import { useWorkspaceUi } from "@/components/workspace/workspace-ui";
+import { VersionHistoryPanel } from "@/components/workspace/VersionHistoryPanel";
 import type { DocumentSummary } from "@/types/document";
-
-// Placeholder version-history entries — real per-document history lands in
-// phase 5. Kept visually present so the shell matches the target design.
-const VERSION_HISTORY_PLACEHOLDER = [
-  { label: "Current version", meta: "Just now", current: true },
-  { label: "Added auth flows", meta: "14 min ago", current: false },
-  { label: "Revised error codes", meta: "1 hr ago", current: false },
-] as const;
 
 export function AppSidebar({ documents }: { documents: DocumentSummary[] }) {
   const pathname = usePathname();
@@ -99,27 +92,7 @@ export function AppSidebar({ documents }: { documents: DocumentSummary[] }) {
         )}
       </nav>
 
-      <div className="border-t border-sidebar-border px-4 py-4">
-        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Version history
-        </span>
-        <ul className="mt-3 flex flex-col gap-3">
-          {VERSION_HISTORY_PLACEHOLDER.map(({ label, meta, current }) => (
-            <li key={label} className="flex items-start gap-2.5">
-              <span
-                className={cn(
-                  "mt-1 size-2 shrink-0 rounded-full",
-                  current ? "bg-primary" : "border border-muted-foreground/40"
-                )}
-              />
-              <span className="flex flex-col">
-                <span className="text-sm text-foreground">{label}</span>
-                <span className="text-xs text-muted-foreground">{meta}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <VersionHistoryPanel />
     </aside>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Eye } from "lucide-react";
+import type { JSONContent } from "@tiptap/core";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import Highlight from "@tiptap/extension-highlight";
@@ -17,6 +18,8 @@ import { buildLocalPresenceUser } from "@/lib/collaboration/presence";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { useCollaborationSessionContext } from "@/components/workspace/collaboration-session";
+import { useDocumentActions } from "@/components/workspace/document-actions";
+import { encodeDocSnapshot } from "@/lib/yjs/snapshot";
 
 
 export function EditorCanvas({
@@ -33,6 +36,7 @@ export function EditorCanvas({
     yDoc
   );
   const { publishSession, resetSession } = useCollaborationSessionContext();
+  const { publishActions, resetActions } = useDocumentActions();
 
   const userId = user?.id ?? null;
   const userName = user?.name ?? null;
@@ -80,6 +84,26 @@ export function EditorCanvas({
   }, [connectionStatus, collaborators, publishSession]);
 
   useEffect(() => resetSession, [resetSession]);
+
+  // Expose snapshot/restore to the version-history panel in the sidebar. Snapshot
+  // reads the live doc; restore replays past content forward as a collaborative
+  // edit (see document-actions). Guarded on the local copy being loaded so we
+  // never snapshot an empty doc mid-hydration.
+  const encodeSnapshot = useCallback(
+    () => (isLocalSnapshotLoaded ? encodeDocSnapshot(yDoc) : null),
+    [yDoc, isLocalSnapshotLoaded]
+  );
+  const restoreContent = useCallback(
+    (content: JSONContent) => {
+      editor?.commands.setContent(content, { emitUpdate: true });
+    },
+    [editor]
+  );
+  useEffect(() => {
+    publishActions({ canEdit, encodeSnapshot, restoreContent });
+  }, [canEdit, encodeSnapshot, restoreContent, publishActions]);
+
+  useEffect(() => resetActions, [resetActions]);
 
   return (
     <div className="flex flex-col gap-2">
