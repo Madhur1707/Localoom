@@ -9,7 +9,7 @@ export type SyncTokenClaims = {
   role: DocumentRole;
 };
 
-const DEVELOPMENT_FALLBACK_SECRET = "scriptum-dev-sync-secret-do-not-use-in-prod";
+const DEVELOPMENT_FALLBACK_SECRET = "localoom-dev-sync-secret-do-not-use-in-prod";
 
 
 const TOKEN_TTL = "12h";

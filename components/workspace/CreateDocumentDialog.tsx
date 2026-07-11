@@ -67,11 +67,16 @@ export function CreateDocumentDialog() {
             <Button
               type="button"
               variant="ghost"
+              straight
               onClick={() => setCreateDocumentOpen(false)}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isCreatingDocument || !title.trim()}>
+            <Button
+              type="submit"
+              straight
+              disabled={isCreatingDocument || !title.trim()}
+            >
               {isCreatingDocument ? "Creating…" : "Create"}
             </Button>
           </div>

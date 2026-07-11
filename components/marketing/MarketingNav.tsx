@@ -9,18 +9,11 @@ export function MarketingNav() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
         <WordmarkLogo href="/" />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <ThemeToggle />
           <Button
-            variant="ghost"
-            size="sm"
-            nativeButton={false}
-            render={<Link href="/login" />}
-          >
-            Sign in
-          </Button>
-          <Button
-            size="sm"
+            size="lg"
+            className="px-7"
             nativeButton={false}
             render={<Link href="/register" />}
           >

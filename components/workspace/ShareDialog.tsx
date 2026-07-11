@@ -175,8 +175,13 @@ function InviteMemberForm({
           onChange={(event) => setEmail(event.target.value)}
           className="flex-1"
         />
-        <RolePicker value={role} onChange={setRole} disabled={isSubmitting} />
-        <Button type="submit" disabled={isSubmitting || !email.trim()}>
+        <RolePicker
+          value={role}
+          onChange={setRole}
+          disabled={isSubmitting}
+          straight
+        />
+        <Button type="submit" straight disabled={isSubmitting || !email.trim()}>
           <UserPlus className="size-4" />
           <span className="hidden sm:inline">Invite</span>
         </Button>
@@ -292,10 +297,12 @@ function RolePicker({
   value,
   onChange,
   disabled,
+  straight = false,
 }: {
   value: AssignableDocumentRole;
   onChange: (role: AssignableDocumentRole) => void;
   disabled?: boolean;
+  straight?: boolean;
 }) {
   const label = ASSIGNABLE_ROLES.find((role) => role.value === value)?.label;
 
@@ -307,6 +314,7 @@ function RolePicker({
             type="button"
             variant="outline"
             size="sm"
+            straight={straight}
             disabled={disabled}
           />
         }
@@ -365,7 +373,7 @@ function ShareLink({ documentId }: { documentId: string | null }) {
             className="border-0 bg-transparent px-0 focus-visible:ring-0"
           />
         </div>
-        <Button type="button" onClick={copyLink}>
+        <Button type="button" straight onClick={copyLink}>
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
           {copied ? "Copied" : "Copy"}
         </Button>

@@ -6,7 +6,9 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 
 export function LoginForm() {
   const { login, isSubmitting, error } = useAuth();
@@ -25,7 +27,9 @@ export function LoginForm() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <h1 className="font-serif text-3xl font-medium tracking-tight">
+          Welcome back
+        </h1>
         <p className="text-sm text-muted-foreground">
           Sign in to reach your documents.
         </p>
@@ -44,9 +48,8 @@ export function LoginForm() {
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="password">Password</Label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="current-password"
             required
             value={password}
@@ -58,8 +61,15 @@ export function LoginForm() {
             {error}
           </p>
         ) : null}
-        <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? "Signing in…" : "Sign in"}
+        <Button type="submit" straight disabled={isSubmitting} className="w-full">
+          {isSubmitting ? (
+            <>
+              <LoadingSpinner className="text-current" />
+              Signing in…
+            </>
+          ) : (
+            "Sign in"
+          )}
         </Button>
       </form>
       <p className="text-center text-sm text-muted-foreground">

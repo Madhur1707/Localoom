@@ -76,12 +76,12 @@ export function AppTopBar() {
           variant="outline"
           size="sm"
           aria-pressed={isAiPanelOpen}
-          aria-label="AI Toolkit"
+          aria-label="AI Assistant"
           className={cn(isAiPanelOpen && "border-primary/50 text-primary")}
           onClick={toggleAiPanel}
         >
           <Sparkles className="size-4" />
-          <span className="hidden sm:inline">AI Toolkit</span>
+          <span className="hidden sm:inline">AI Assistant</span>
         </Button>
         <Button
           type="button"
@@ -108,8 +108,11 @@ export function AppTopBar() {
               <AvatarFallback>{initial}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem disabled className="opacity-100">
+          <DropdownMenuContent align="end" className="w-auto min-w-56">
+            <DropdownMenuItem
+              disabled
+              className="opacity-100 text-muted-foreground"
+            >
               {user?.email}
             </DropdownMenuItem>
             <DropdownMenuSeparator />

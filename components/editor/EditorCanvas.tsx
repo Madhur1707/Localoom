@@ -99,9 +99,46 @@ export function EditorCanvas({
     },
     [editor]
   );
+
+  // AI assistant context + insertion. Selection text is null when the cursor is
+  // collapsed; insertion replaces a non-empty selection or inserts at the cursor.
+  const getDocumentText = useCallback(() => editor?.getText() ?? "", [editor]);
+  const getSelectionText = useCallback(() => {
+    if (!editor) return null;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) return null;
+    return editor.state.doc.textBetween(from, to, "\n");
+  }, [editor]);
+  const insertAiResult = useCallback(
+    (text: string) => {
+      if (!editor) return;
+      const { from, to, empty } = editor.state.selection;
+      const chain = editor.chain().focus();
+      if (empty) chain.insertContent(text);
+      else chain.insertContentAt({ from, to }, text);
+      chain.run();
+    },
+    [editor]
+  );
+
   useEffect(() => {
-    publishActions({ canEdit, encodeSnapshot, restoreContent });
-  }, [canEdit, encodeSnapshot, restoreContent, publishActions]);
+    publishActions({
+      canEdit,
+      encodeSnapshot,
+      restoreContent,
+      getDocumentText,
+      getSelectionText,
+      insertAiResult,
+    });
+  }, [
+    canEdit,
+    encodeSnapshot,
+    restoreContent,
+    getDocumentText,
+    getSelectionText,
+    insertAiResult,
+    publishActions,
+  ]);
 
   useEffect(() => resetActions, [resetActions]);
 

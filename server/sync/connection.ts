@@ -30,9 +30,26 @@ export async function setupCollaborationConnection(
   // Attach the message handler synchronously so no client frame sent during the
   // hydration await is dropped. Any edit that lands before the replay finishes is
   // simply merged — Yjs updates are commutative, so ordering doesn't matter.
-  socket.on("message", (data) =>
-    handleMessage(socket, room, canWrite, toBytes(data))
-  );
+  //
+  // A malformed frame makes the binary decoder / Y.applyUpdate throw. Catch it so
+  // one bad message can never crash the relay: drop the frame and close that one
+  // socket. The server (and every other collaborator) stays up.
+  socket.on("message", (data) => {
+    try {
+      handleMessage(socket, room, canWrite, toBytes(data));
+    } catch (error) {
+      console.error("Dropping malformed sync frame:", error);
+      socket.close(1007, "invalid frame");
+    }
+  });
+
+  // ws emits 'error' on protocol violations and on frames over maxPayload (which
+  // it closes with 1009). Without a listener that 'error' would bubble to an
+  // uncaughtException and take the process down — handle it and drop the socket.
+  socket.on("error", (error) => {
+    console.error("Sync socket error:", error);
+    socket.terminate();
+  });
 
   const pingTimer = setInterval(() => {
     if (!connection.isAlive) {
@@ -134,9 +151,16 @@ function handleSyncMessage(
   // just by a disabled editor that a crafted client could bypass. `socket` is the
   // transaction origin so the change isn't echoed straight back to its author.
   if (!canWrite) return;
+  // y-protocols swallows a bad update internally (just logs it), which would let
+  // a client spam garbage forever. Re-throw via the errorHandler so it bubbles to
+  // the connection's try/catch, which drops that socket instead.
   if (syncMessageType === syncProtocol.messageYjsSyncStep2) {
-    syncProtocol.readSyncStep2(decoder, room.doc, socket);
+    syncProtocol.readSyncStep2(decoder, room.doc, socket, rethrowUpdateError);
   } else if (syncMessageType === syncProtocol.messageYjsUpdate) {
-    syncProtocol.readUpdate(decoder, room.doc, socket);
+    syncProtocol.readUpdate(decoder, room.doc, socket, rethrowUpdateError);
   }
+}
+
+function rethrowUpdateError(error: Error): never {
+  throw error;
 }

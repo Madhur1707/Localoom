@@ -23,6 +23,9 @@ export function useDocuments() {
       try {
         const document = await documentService.createDocument({ title });
         router.push(`/documents/${document.id}`);
+        // Re-run the server components so the new doc appears in the sidebar /
+        // dashboard lists without a manual refresh.
+        router.refresh();
         return document;
       } catch (err) {
         setCreateDocumentError(

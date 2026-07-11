@@ -4,6 +4,7 @@ import { requireSession } from "@/services/authService";
 import { getDocumentById } from "@/services/documentService";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { ActiveDocumentBridge } from "@/components/workspace/ActiveDocumentBridge";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 export default async function DocumentEditorPage({
   params,
@@ -18,11 +19,7 @@ export default async function DocumentEditorPage({
     notFound();
   }
 
-  const lastEdited = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(document.updatedAt);
+  const lastEdited = formatRelativeTime(document.updatedAt);
 
   // Viewers get a read-only editor; owners and editors can write. The sync server
   // independently enforces the same rule on the wire (see server/sync).
@@ -36,7 +33,7 @@ export default async function DocumentEditorPage({
         role={document.role}
       />
       <header className="mb-5">
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="font-serif text-4xl font-medium tracking-tight">
           {document.title}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">

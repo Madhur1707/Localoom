@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { History, Plus, Trash2 } from "lucide-react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { History, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ export function VersionHistoryPanel() {
   const { actions } = useDocumentActions();
   const documentId = activeDocument?.id ?? null;
 
-  const { versions, isLoading, loadError, saveVersion, deleteVersion } =
+  const { versions, isLoading, loadError, reload, saveVersion, deleteVersion } =
     useDocumentVersions(documentId);
 
   const [selectedVersion, setSelectedVersion] =
@@ -41,7 +41,20 @@ export function VersionHistoryPanel() {
   const canManage = activeDocument.role === "OWNER";
 
   return (
-    <Section>
+    <Section
+      action={
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label="Refresh version history"
+          disabled={isLoading}
+          onClick={() => reload()}
+        >
+          <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
+        </Button>
+      }
+    >
       {canEdit ? (
         <SaveVersionForm
           canSnapshot={actions !== null}
@@ -90,13 +103,22 @@ export function VersionHistoryPanel() {
   );
 }
 
-function Section({ children }: { children: React.ReactNode }) {
+function Section({
+  children,
+  action,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+}) {
   return (
     <div className="border-t border-sidebar-border px-4 py-4">
-      <span className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        <History className="size-3.5" />
-        Version history
-      </span>
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          <History className="size-3.5" />
+          Version history
+        </span>
+        {action}
+      </div>
       <div className="mt-3">{children}</div>
     </div>
   );
@@ -161,6 +183,7 @@ function SaveVersionForm({
         <Button
           type="submit"
           size="sm"
+          straight
           className="flex-1"
           disabled={isSaving || !name.trim()}
         >
@@ -170,6 +193,7 @@ function SaveVersionForm({
           type="button"
           variant="ghost"
           size="sm"
+          straight
           disabled={isSaving}
           onClick={() => {
             setIsNaming(false);

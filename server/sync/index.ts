@@ -9,6 +9,11 @@ import { authorizeConnection, type ConnectionAuthorization } from "./auth";
 const HOST = process.env.SYNC_HOST ?? "0.0.0.0";
 const PORT = Number(process.env.SYNC_PORT ?? 1234);
 
+// Hard cap on a single WebSocket message. A legitimate Yjs update is a few bytes;
+const MAX_PAYLOAD_BYTES = Number(
+  process.env.SYNC_MAX_PAYLOAD_BYTES ?? 1024 * 1024
+);
+
 
 const authorizationByRequest = new WeakMap<
   IncomingMessage,
@@ -18,12 +23,13 @@ const authorizationByRequest = new WeakMap<
 const httpServer = http.createServer((_req, res) => {
 
   res.writeHead(200, { "content-type": "text/plain" });
-  res.end("Scriptum sync server\n");
+  res.end("Localoom sync server\n");
 });
 
 
 const wss = new WebSocketServer({
   server: httpServer,
+  maxPayload: MAX_PAYLOAD_BYTES,
   verifyClient: ({ req }, done) => {
     authorizeConnection(req.url)
       .then((authorization) => {
@@ -71,13 +77,13 @@ httpServer.on("error", handleServerError);
 wss.on("error", handleServerError);
 
 httpServer.listen(PORT, HOST, () => {
-  console.log(`Scriptum sync server listening on ws://${HOST}:${PORT}`);
+  console.log(`Localoom sync server listening on ws://${HOST}:${PORT}`);
 });
 
 // Close sockets cleanly on shutdown so clients fall back to local-first mode
 // instead of hanging on a half-open connection.
 function shutdown() {
-  console.log("Scriptum sync server shutting down");
+  console.log("Localoom sync server shutting down");
   wss.clients.forEach((socket) => socket.close(1001, "server shutting down"));
   // Persist any buffered edits before the process exits, then close listeners.
   void flushAllRooms().finally(() => {

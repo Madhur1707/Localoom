@@ -13,6 +13,22 @@ export function useDocumentVersions(documentId: string | null) {
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Manual re-fetch for the section's refresh button.
+  const reload = useCallback(async () => {
+    if (!documentId) return;
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      setVersions(await documentService.fetchDocumentVersions(documentId));
+    } catch (err) {
+      setLoadError(
+        err instanceof Error ? err.message : "Failed to load version history"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [documentId]);
+
   useEffect(() => {
     if (!documentId) return;
 
@@ -65,5 +81,5 @@ export function useDocumentVersions(documentId: string | null) {
     [documentId]
   );
 
-  return { versions, isLoading, loadError, saveVersion, deleteVersion };
+  return { versions, isLoading, loadError, reload, saveVersion, deleteVersion };
 }

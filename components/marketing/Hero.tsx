@@ -1,29 +1,30 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      {/* Soft violet glow behind the hero. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-40 -z-10 mx-auto h-[36rem] max-w-4xl rounded-full bg-primary/25 opacity-40 blur-[120px]"
-      />
-      <div className="mx-auto flex w-full max-w-4xl flex-col items-center px-6 pt-24 pb-16 text-center sm:pt-32">
-        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground">
-          <Sparkles className="size-3.5 text-primary" />
-          Local-first · Real-time · Version history
+    <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-6 pt-16 pb-16 lg:grid-cols-2 lg:gap-14 lg:pt-24">
+      {/* Left: headline, copy, actions. */}
+      <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+        {/* Slanted tag echoing the button shape (skew + offset shadow). */}
+        <span className="inline-block -skew-x-9 border border-border bg-card shadow-[3px_3px_0_0_#000]">
+          <span className="inline-flex skew-x-9 items-center gap-2 px-3.5 py-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Local-first · Real-time · AI-assisted
+          </span>
         </span>
-        <h1 className="mt-6 text-balance text-5xl font-semibold tracking-tight sm:text-6xl">
-          Write together, even{" "}
-          <span className="text-primary">offline</span>.
+        <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.15] tracking-tight text-balance sm:text-5xl">
+          Write Together.
+          <br />
+          <span className="text-primary">Anywhere. Anytime.</span>
         </h1>
-        <p className="mt-6 max-w-2xl text-balance text-lg text-muted-foreground">
-          Scriptum is a local-first collaborative editor. Your edits land
-          instantly on your device and sync conflict-free the moment you
-          reconnect — no spinners, no lost work, full version history.
+        <p className="mt-6 max-w-xl text-lg text-justify leading-relaxed text-muted-foreground">
+          Localoom keeps every keystroke on your device first, then syncs it
+          conflict-free the moment you&apos;re back online — with live cursors,
+          full version history, and an AI assistant that knows your whole
+          document.
         </p>
         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
           <Button
@@ -43,6 +44,19 @@ export function Hero() {
             Sign in
           </Button>
         </div>
+      </div>
+
+      {/* Right: product shot. */}
+      <div className="relative">
+        <Image
+          src="/heroimage.png"
+          alt="The Localoom collaborative editor"
+          width={1919}
+          height={1077}
+          priority
+          sizes="(min-width: 1024px) 50vw, 100vw"
+          className="h-auto w-full border border-border shadow-[10px_10px_0_0_rgba(0,0,0,0.55)]"
+        />
       </div>
     </section>
   );

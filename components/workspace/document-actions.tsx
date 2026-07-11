@@ -24,6 +24,13 @@ export type DocumentActions = {
   // Applies past content to the live document as a new collaborative edit — it
   // broadcasts to every peer and persists forward, never destroying history.
   restoreContent: (content: JSONContent) => void;
+  // Plain-text context for the AI assistant: the whole document, and the current
+  // selection (null when nothing is selected).
+  getDocumentText: () => string;
+  getSelectionText: () => string | null;
+  // Inserts AI output as a normal collaborative edit — replaces the selection if
+  // there is one, otherwise inserts at the cursor.
+  insertAiResult: (text: string) => void;
 };
 
 type DocumentActionsValue = {

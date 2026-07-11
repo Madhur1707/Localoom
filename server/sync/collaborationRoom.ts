@@ -10,14 +10,13 @@ import type { WebSocket } from "ws";
 
 import { MESSAGE_AWARENESS, MESSAGE_SYNC, toMessage } from "./protocol";
 import {
+  compactDocumentUpdates,
   loadDocumentUpdates,
   persistDocumentUpdates,
   type PersistableUpdate,
 } from "./persistence";
 
-// A connection tracks which awareness client-ids it "controls" so that when the
-// socket drops we can retract exactly those presence states (and nothing else),
-// plus the authenticated user behind it so we can attribute persisted edits.
+
 export type RoomConnection = {
   socket: WebSocket;
   userId: string;
@@ -25,20 +24,10 @@ export type RoomConnection = {
   isAlive: boolean;
 };
 
-// Marks doc updates that originated from replaying the DB on startup, so the
-// persistence handler doesn't write them straight back into the log it just read.
 const HYDRATION_ORIGIN = Symbol("hydration");
 
-// How long to coalesce edits before writing them. Keystrokes arrive continuously;
-// batching turns a burst of tiny updates into one merged row per author.
 const PERSIST_FLUSH_MS = 2000;
 
-// One CollaborationRoom == one document being edited. It owns the authoritative
-// in-memory Y.Doc and Awareness for that document, fans every local change out to
-// all connected sockets, and — unlike the relay-only Phase 3 version — hydrates
-// from and appends to the DocumentUpdate log so the document survives having no
-// clients connected. The room lives while at least one client is connected (see
-// the registry below); its content lives durably in Postgres.
 export class CollaborationRoom {
   readonly name: string;
   readonly doc: Y.Doc;
@@ -52,6 +41,8 @@ export class CollaborationRoom {
   // Edits awaiting their next flush, tagged with the author that produced them.
   private pendingWrites: { userId: string | null; update: Uint8Array }[] = [];
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
+  // Guards against overlapping compaction runs (fired fire-and-forget per flush).
+  private isCompacting = false;
 
   constructor(name: string) {
     this.name = name;
@@ -66,10 +57,8 @@ export class CollaborationRoom {
     this.whenReady = this.hydrateFromStorage();
   }
 
-  // Replay the append-only log into the in-memory doc. Applied under a single
-  // HYDRATION_ORIGIN update so the persistence handler skips it (idempotent even
-  // if it didn't, since Yjs updates are commutative — but we avoid the wasted
-  // write). Failures degrade to an empty doc rather than blocking the room.
+
+
   private async hydrateFromStorage(): Promise<void> {
     try {
       const updates = await loadDocumentUpdates(this.name);
@@ -81,9 +70,7 @@ export class CollaborationRoom {
     }
   }
 
-  // A document edit becomes both a sync `update` for every peer and a buffered
-  // row for durability. Hydration replays are broadcast-safe but must not be
-  // re-persisted, hence the origin check.
+
   private handleDocumentUpdate = (update: Uint8Array, origin: unknown) => {
     this.broadcastDocumentUpdate(update, origin);
 
@@ -139,11 +126,27 @@ export class CollaborationRoom {
 
     try {
       await persistDocumentUpdates(this.name, entries);
+      this.maybeCompact();
     } catch (error) {
       console.error(`Failed to persist updates for ${this.name}:`, error);
       this.pendingWrites.unshift(...batch);
       this.scheduleFlush();
     }
+  }
+
+  private maybeCompact() {
+    if (this.isCompacting) return;
+    this.isCompacting = true;
+    compactDocumentUpdates(this.name)
+      .then((compacted) => {
+        if (compacted) console.log(`Compacted update log for ${this.name}`);
+      })
+      .catch((error) =>
+        console.error(`Compaction failed for ${this.name}:`, error)
+      )
+      .finally(() => {
+        this.isCompacting = false;
+      });
   }
 
   // Presence changes (cursor, name, colour) are relayed to every socket. We also

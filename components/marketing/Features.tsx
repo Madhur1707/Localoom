@@ -42,24 +42,24 @@ const FEATURES = [
 
 export function Features() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-6 py-20">
+    <section className="mx-auto w-full max-w-5xl px-6 py-16">
       <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h2 className="font-serif text-3xl font-medium tracking-tight sm:text-4xl">
           Everything a modern doc needs
         </h2>
         <p className="mt-4 text-muted-foreground">
-          Built for teams that want the speed of a local app with the reach of
-          the cloud.
+          The speed of a local app with the reach of the cloud — without the
+          usual trade-offs.
         </p>
       </div>
-      <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map(({ icon: Icon, title, body }) => (
           <div
             key={title}
-            className="group rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/40"
+            className="group border border-border bg-card p-6 transition-colors hover:border-primary/50"
           >
-            <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
-              <Icon className="size-5" />
+            <div className="flex size-10 -skew-x-9 items-center justify-center bg-primary/12 text-primary">
+              <Icon className="size-5 skew-x-9" />
             </div>
             <h3 className="mt-5 font-medium">{title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">

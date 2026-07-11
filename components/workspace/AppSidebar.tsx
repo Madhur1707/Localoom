@@ -1,8 +1,9 @@
 "use client";
 
+import { useTransition } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { FileText, PanelLeftClose, Plus } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { FileText, PanelLeftClose, Plus, RefreshCw } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,10 @@ import type { DocumentSummary } from "@/types/document";
 
 export function AppSidebar({ documents }: { documents: DocumentSummary[] }) {
   const pathname = usePathname();
+  const router = useRouter();
+  // The document list is server-rendered; router.refresh() re-runs the server
+  // component to pull a fresh list without a full page reload.
+  const [isRefreshing, startRefresh] = useTransition();
   const {
     isSidebarOpen,
     isMobileNavOpen,
@@ -49,15 +54,29 @@ export function AppSidebar({ documents }: { documents: DocumentSummary[] }) {
         <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Files
         </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          aria-label="New document"
-          onClick={() => setCreateDocumentOpen(true)}
-        >
-          <Plus className="size-3.5" />
-        </Button>
+        <div className="flex items-center gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Refresh documents"
+            disabled={isRefreshing}
+            onClick={() => startRefresh(() => router.refresh())}
+          >
+            <RefreshCw
+              className={cn("size-3.5", isRefreshing && "animate-spin")}
+            />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="New document"
+            onClick={() => setCreateDocumentOpen(true)}
+          >
+            <Plus className="size-3.5" />
+          </Button>
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-4">

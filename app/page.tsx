@@ -16,12 +16,12 @@ export default function LandingPage() {
         <Features />
 
         {/* Closing call to action */}
-        <section className="mx-auto w-full max-w-6xl px-6 pb-24">
-          <div className="relative overflow-hidden rounded-3xl border border-border bg-linear-to-br from-primary/15 via-card to-card p-10 text-center sm:p-16">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+        <section className="mx-auto w-full max-w-4xl px-6 pb-20">
+          <div className="border border-border bg-card p-10 text-center sm:p-14">
+            <h2 className="font-serif text-3xl font-medium tracking-tight sm:text-4xl">
               Ready to write without limits?
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+            <p className="mx-auto mt-4 max-w-lg text-muted-foreground">
               Create your first document in seconds. No credit card, works
               offline from the start.
             </p>

@@ -29,7 +29,7 @@ export function DocumentList({ documents }: { documents: DocumentSummary[] }) {
           value={newDocumentTitle}
           onChange={(event) => setNewDocumentTitle(event.target.value)}
         />
-        <Button type="submit" disabled={isCreatingDocument}>
+        <Button type="submit" straight disabled={isCreatingDocument}>
           <Plus className="size-4" />
           {isCreatingDocument ? "Creating…" : "New document"}
         </Button>

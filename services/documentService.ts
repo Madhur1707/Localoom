@@ -54,17 +54,44 @@ export async function getDocumentById(
 ): Promise<DocumentSummary | null> {
   const membership = await prisma.documentMember.findUnique({
     where: { documentId_userId: { documentId, userId } },
-    include: { document: true },
+    include: {
+      document: {
+        include: {
+          // Edits flow through Yjs (persisted as DocumentUpdate rows), not the
+          // Document row, so the real "last edited" is the newest of the doc
+          // row, the last persisted edit, and the last saved version.
+          updates: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { createdAt: true },
+          },
+          versions: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { createdAt: true },
+          },
+        },
+      },
+    },
   });
 
   if (!membership) return null;
 
+  const { document } = membership;
+  const lastEditedAt = [
+    document.updatedAt,
+    document.updates[0]?.createdAt,
+    document.versions[0]?.createdAt,
+  ]
+    .filter((date): date is Date => Boolean(date))
+    .reduce((latest, date) => (date > latest ? date : latest), document.updatedAt);
+
   return {
-    id: membership.document.id,
-    title: membership.document.title,
+    id: document.id,
+    title: document.title,
     role: membership.role,
-    createdAt: membership.document.createdAt,
-    updatedAt: membership.document.updatedAt,
+    createdAt: document.createdAt,
+    updatedAt: lastEditedAt,
   };
 }
 

@@ -1,13 +1,13 @@
+import * as Y from "yjs";
+
 import { prisma } from "../../lib/prisma";
 
-// Server-side durability for the CRDT. The sync server is a separate Node process
-// from Next.js, but it can talk to the same Postgres directly via the shared
-// Prisma singleton (imported by relative path since tsx doesn't resolve `@/`).
-//
-// The DocumentUpdate table is an append-only log of raw Yjs binary updates: on
-// room start we replay it to rebuild the document, and as edits arrive we append
-// to it. Nothing here is ever mutated or deleted, so history stays intact for the
-// version/time-travel features layered on top.
+// Once a document's log passes this many rows, it's collapsed into a single
+// merged snapshot. Tunable; a few hundred keeps hydration fast without compacting
+// on every edit.
+const COMPACTION_THRESHOLD = Number(
+  process.env.SYNC_COMPACTION_THRESHOLD ?? 500
+);
 
 // One row's worth of persistence: the merged binary update and who authored it.
 export type PersistableUpdate = {
@@ -42,4 +42,38 @@ export async function persistDocumentUpdates(
       createdById: entry.userId,
     })),
   });
+  await prisma.document.update({
+    where: { id: documentId },
+    data: { updatedAt: new Date() },
+  });
+}
+
+// Log compaction: merge the whole append-only log into one snapshot row and drop
+// the originals, bounding storage and keeping hydration fast as a document is
+// edited over time.
+export async function compactDocumentUpdates(
+  documentId: string
+): Promise<boolean> {
+  const count = await prisma.documentUpdate.count({ where: { documentId } });
+  if (count < COMPACTION_THRESHOLD) return false;
+
+  const rows = await prisma.documentUpdate.findMany({
+    where: { documentId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, data: true },
+  });
+  if (rows.length < COMPACTION_THRESHOLD) return false;
+
+  const merged = Y.mergeUpdates(rows.map((row) => new Uint8Array(row.data)));
+
+
+  await prisma.$transaction([
+    prisma.documentUpdate.create({
+      data: { documentId, data: Buffer.from(merged) },
+    }),
+    prisma.documentUpdate.deleteMany({
+      where: { id: { in: rows.map((row) => row.id) } },
+    }),
+  ]);
+  return true;
 }

@@ -2,7 +2,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import { WebsocketProvider } from "y-websocket";
 import type * as Y from "yjs";
 
-const INDEXEDDB_NAME_PREFIX = "scriptum-document";
+const INDEXEDDB_NAME_PREFIX = "localoom-document";
 
 
 const SYNC_SERVER_URL =
